@@ -1,0 +1,1137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Curveboost.io</title>
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+  <!-- p5.sound for boost SFX -->
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/addons/p5.sound.min.js"></script>
+  <style>
+    :root { color-scheme: dark; }
+    html, body { margin:0; padding:0; height:100%; background:#000; overflow:hidden;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+    .app { display:flex; height:100vh; width:100vw; }
+
+    /* Sidebar (slightly wider) */
+    #sidebar {
+      width:440px; min-width:380px; max-width:620px;
+      background:#0b0b0b; border-right:1px solid #1e1e1e;
+      color:#eaeaea; padding:16px 14px; box-sizing:border-box;
+      display:flex; flex-direction:column;
+      overflow:auto;
+    }
+    .header { display:flex; flex-direction:column; gap:10px; margin-bottom:10px; }
+    /* Logo (slightly bigger) */
+    .logo { font-weight:900; font-size:28px; letter-spacing:1.8px; text-transform:uppercase; line-height:1;
+      background:linear-gradient(90deg,#00e5ff,#a855f7,#ff2bd6); -webkit-background-clip:text; background-clip:text; color:transparent;
+      text-shadow:0 0 10px rgba(0,229,255,.12), 0 0 22px rgba(168,85,247,.10); user-select:none; }
+    .subtitle { font-size:12px; color:#9ca3af; letter-spacing:.4px; margin-top:-4px; }
+
+    .mode-toggle { display:flex; background:#0f0f0f; border:1px solid #242424; border-radius:999px; padding:4px; gap:4px;
+      width:fit-content; box-shadow:inset 0 0 0 1px rgba(255,255,255,.02); }
+    .mode-btn { border:none; outline:none; cursor:pointer; background:transparent; color:#cfcfcf; padding:8px 14px; border-radius:999px;
+      font-size:12px; letter-spacing:.4px; transition:all .18s ease; }
+    .mode-btn:hover { color:#fff; }
+    .mode-btn.active { color:#0b0b0b; font-weight:800; background:linear-gradient(90deg,#00e5ff,#a855f7);
+      box-shadow:0 2px 10px rgba(0,229,255,.2), 0 2px 14px rgba(168,85,247,.18); }
+
+    .section { margin:14px 0; padding:12px; background:#111; border:1px solid #1f1f1f; border-radius:10px; }
+    .row { display:flex; justify-content:space-between; align-items:baseline; gap:8px; margin:6px 0; font-size:14px; }
+    .small { font-size:12px; color:#bbb; }
+
+    .score-wrap { display:flex; justify-content:space-between; align-items:center; }
+    .score-label { font-size:13px; color:#bdbdbd; }
+    .score-values { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+    .score-pill {
+      font-weight:900; letter-spacing:.3px; font-size:30px; min-width:48px; text-align:center;
+      background:#0f0f0f; border:1px solid #2a2a2a; border-radius:10px; padding:4px 10px;
+      box-shadow:inset 0 0 0 1px rgba(255,255,255,.02);
+    }
+    #scoreP1 { color:rgb(0,255,255); }  #scoreP2 { color:rgb(255,0,255); }
+
+    .winner-row { display:flex; justify-content:space-between; align-items:center; margin-top:8px; }
+    .winner-pill { display:inline-block; padding:4px 10px; border-radius:999px; background:#0f0f0f; border:1px solid #2a2a2a;
+      font-weight:800; font-size:14px; box-shadow:inset 0 0 0 1px rgba(255,255,255,.02); color:#cfcfcf; }
+
+    .stats-title { font-weight:700; color:#eaeaea; margin-bottom:8px; }
+    .current-pill { display:inline-block; font-weight:900; font-size:28px; letter-spacing:.3px; padding:4px 10px;
+      border-radius:10px; background:#0f0f0f; border:1px solid #2a2a2a; box-shadow:inset 0 0 0 1px rgba(255,255,255,.02); }
+    .stats-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px; }
+    .stat { background:#0f0f0f; border:1px solid #2a2a2a; border-radius:10px; padding:8px; box-shadow:inset 0 0 0 1px rgba(255,255,255,.02); }
+    .stat .label { font-size:12px; color:#bdbdbd; } .stat .value { font-size:22px; font-weight:900; color:#fff; }
+
+    .controls p { margin:6px 0; line-height:1.3; white-space:nowrap; }
+    .pill { display:inline-block; padding:2px 8px; border-radius:999px; border:1px solid #2a2a2a; background:#0e0e0e; font-size:12px; color:#cfcfcf; }
+    .pill.p1 { color:rgb(0,255,255); } .pill.p2 { color:rgb(255,0,255); }
+
+    .slider { display:grid; grid-template-columns:1fr auto; gap:8px; align-items:center; margin-top:8px; }
+    input[type="range"] { width:100%; }
+    button { cursor:pointer; background:#131313; color:#eaeaea; border:1px solid #2a2a2a; border-radius:10px; padding:8px 10px; font-size:13px;
+      transition:border-color .15s ease, transform .05s ease; }
+    button:hover { border-color:#3d3d3d; } button:active { transform:translateY(1px); }
+
+    .toggle-row { display:flex; justify-content:space-between; align-items:center; margin-top:12px; }
+    .toggle-label { color:#e5e7eb; font-size:14px; }
+    .switch {
+      position:relative; width:92px; height:30px; border-radius:999px; border:1px solid #2a2a2a;
+      background:#121212; display:inline-flex; align-items:center; justify-content:center;
+      font-weight:800; letter-spacing:.4px; font-size:12px; color:#cfcfcf; cursor:pointer; user-select:none;
+      transition: all .18s ease;
+    }
+    .switch .knob { position:absolute; top:3px; left:3px; width:24px; height:24px; border-radius:999px; background:#262626;
+      transition: transform .18s ease, background .18s ease; }
+    .switch.on { background:linear-gradient(90deg,#00e5ff,#a855f7); color:#0b0b0b; border-color:transparent;
+      box-shadow:0 2px 10px rgba(0,229,255,.2), 0 2px 14px rgba(168,85,247,.18); }
+    .switch.on .knob { transform: translateX(62px); background:#0b0b0b; }
+
+    .fs-footer { margin-top:auto; padding-top:12px; border-top:1px solid #1f1f1f; text-align:center; }
+
+    #stage { position:relative; flex:1; background:#000; }
+    canvas { display:block; }
+
+    /* --- Solo compact mode (applies only in 1P) --- */
+    #sidebar.solo-compact #soloSection { padding:8px; }
+    #sidebar.solo-compact #soloSection .stats-title { font-size:13px; margin-bottom:6px; }
+    #sidebar.solo-compact #soloSection .current-pill { font-size:20px; padding:2px 8px; }
+    #sidebar.solo-compact #soloSection .stats-grid { gap:6px; margin-top:8px; }
+    #sidebar.solo-compact #soloSection .stat { padding:6px; }
+    #sidebar.solo-compact #soloSection .stat .label { font-size:11px; }
+    #sidebar.solo-compact #soloSection .stat .value { font-size:18px; }
+    #sidebar.solo-compact #soloSection .small { font-size:11px; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside id="sidebar">
+      <div class="header">
+        <div class="logo">CURVEBOOST.IO</div>
+        <div class="subtitle">Flow faster with the boost.</div>
+        <div class="mode-toggle" role="group" aria-label="Game mode">
+          <button id="mode1" class="mode-btn active">1 Player</button>
+          <button id="mode2" class="mode-btn">2 Players</button>
+          <button id="modeAI" class="mode-btn">Vs AI</button>
+        </div>
+      </div>
+
+      <!-- 2P/AI: Score -->
+      <div id="versusSection" class="section">
+        <div class="score-wrap">
+          <div class="score-label">Score</div>
+          <div class="score-values">
+            <span id="scoreP1" class="score-pill">0</span>
+            <span id="scoreP2" class="score-pill">0</span>
+          </div>
+        </div>
+        <div class="winner-row">
+          <div class="score-label">Last round</div>
+          <div id="lastWinner" class="winner-pill">—</div>
+        </div>
+        <div class="row small">Press <b>TAB</b> to reset score to 0–0</div>
+      </div>
+
+      <!-- 1P: Solo Stats -->
+      <div id="soloSection" class="section" style="display:none;">
+        <div class="stats-title">Solo Stats</div>
+        <div class="row">
+          <div>Current Run</div>
+          <div id="soloCurrent" class="current-pill">0s</div>
+        </div>
+        <div class="stats-grid">
+          <div class="stat"><div class="label">Best</div><div id="soloBest" class="value">0s</div></div>
+          <div class="stat"><div class="label">Last</div><div id="soloLast" class="value">0s</div></div>
+          <div class="stat"><div class="label">Average</div><div id="soloAvg" class="value">0s</div></div>
+          <div class="stat"><div class="label">Rounds</div><div id="soloRounds" class="value">0</div></div>
+        </div>
+        <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;">
+          <button id="resetStatsBtn" title="Clear all solo stats">Reset Stats</button>
+          <span class="small" style="align-self:center;">Press <b>TAB</b> to reset stats</span>
+        </div>
+      </div>
+
+      <div class="section controls">
+        <div class="row"><b>Controls</b></div>
+        <!-- Default shown = 1P mode -->
+        <p id="p1Controls"><span class="pill p1">P1</span> Turn: ← → &nbsp;&nbsp; Boost: <b>Space</b> or <b>L-Shift</b></p>
+        <p id="p2Controls"><span class="pill p2">P2</span> Turn: <b>C</b>/<b>B</b> &nbsp; Boost: <b>Left Shift</b></p>
+      </div>
+
+      <div class="section">
+        <div class="row"><b>Gameplay Settings</b></div>
+
+        <div class="slider">
+          <label for="speedSlider">Initial Speed</label>
+          <span id="speedVal" class="pill">150</span>
+        </div>
+        <!-- Midpoint = 150 (default). Range widened below and above. -->
+        <input id="speedSlider" type="range" min="50" max="250" step="5" value="150" />
+
+        <div class="slider" style="margin-top:12px;">
+          <label for="turnSlider">Turn Speed</label>
+          <span id="turnVal" class="pill">5.0</span>
+        </div>
+        <!-- Midpoint = 5 (default). Allows 0..10. -->
+        <input id="turnSlider" type="range" min="0" max="10" step="0.5" value="5" />
+        <div class="small" style="margin-top:6px;">Turn speed ↑ ⇒ tighter turn radius.</div>
+
+        <!-- AI Difficulty (shown only in Vs AI mode) -->
+        <div id="aiRow" class="slider" style="margin-top:12px; display:none;">
+          <label for="aiDiffSlider">AI Difficulty</label>
+          <span id="aiDiffVal" class="pill">5</span>
+        </div>
+        <input id="aiDiffSlider" type="range" min="1" max="10" step="1" value="5" style="display:none;" />
+
+        <!-- Game Options -->
+        <div class="row" style="margin-top:12px;"><b>Game Options</b></div>
+
+        <div class="toggle-row">
+          <div class="toggle-label">Boost</div>
+          <button id="boostToggle" class="switch on" aria-pressed="true" title="Toggle boost">
+            <span class="knob"></span><span class="label">ON</span>
+          </button>
+        </div>
+
+        <!-- NEW: Boost Sound toggle -->
+        <div class="toggle-row">
+          <div class="toggle-label">Boost Sound</div>
+          <button id="boostSoundToggle" class="switch on" aria-pressed="true" title="Toggle boost sound">
+            <span class="knob"></span><span class="label">ON</span>
+          </button>
+        </div>
+
+        <div class="toggle-row">
+          <div class="toggle-label">Eraser Spawn</div>
+          <button id="eraserToggle" class="switch on" aria-pressed="true" title="Toggle eraser spawns">
+            <span class="knob"></span><span class="label">ON</span>
+          </button>
+        </div>
+
+        <!-- Eraser spawn rate (seconds; midpoint=1.0s default) -->
+        <div id="eraserRateRow" class="slider" style="margin-top:12px;">
+          <label for="eraserRateSlider">Eraser Spawn Rate</label>
+          <span id="eraserRateVal" class="pill">Every 1.0s</span>
+        </div>
+        <input id="eraserRateSlider" type="range" min="0.5" max="1.5" step="0.1" value="1.0" />
+
+        <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
+          <button id="applyBtn">Instant Apply</button>
+        </div>
+      </div>
+
+      <div class="fs-footer small">Press <b>F</b> to toggle fullscreen</div>
+    </aside>
+
+    <main id="stage"></main>
+  </div>
+
+<script>
+/* ===========================================================
+   Flags (AI plumbing kept for later phases)
+=========================================================== */
+const FLAGS = (() => {
+  const url = new URL(location.href);
+  return {
+    aiImpl: (url.searchParams.get('ai') || 'classic').toLowerCase(),
+    aiBudgetMs: parseInt(url.searchParams.get('aibudget') || '6', 10),
+    aiTickHz: parseInt(url.searchParams.get('aitick') || '30', 10),
+  };
+})();
+
+/* =========================
+   Input system
+========================= */
+const KEYS = {
+  ArrowLeft:false, ArrowRight:false, KeyC:false, KeyB:false,
+  ShiftLeft:false, ShiftRight:false, Period:false, Space:false
+};
+const CONTROL_CODES = new Set([
+  'ArrowLeft','ArrowRight','KeyC','KeyB','ShiftLeft','ShiftRight','Period','Space'
+]);
+function isEditableTarget(t) {
+  if (!t) return false;
+  const tag = t.tagName ? t.tagName.toLowerCase() : '';
+  return tag === 'input' || tag === 'textarea' || t.isContentEditable;
+}
+function handleKeyEvent(e, isDown) {
+  const code = e.code;
+  if (!CONTROL_CODES.has(code)) return;
+  if (!isEditableTarget(e.target)) e.preventDefault();
+  if (KEYS.hasOwnProperty(code)) KEYS[code] = isDown;
+}
+window.addEventListener('keydown', e => handleKeyEvent(e, true));
+window.addEventListener('keyup',   e => handleKeyEvent(e, false));
+function clearAllKeys() { for (const k in KEYS) KEYS[k] = false; }
+window.addEventListener('blur', clearAllKeys);
+document.addEventListener('visibilitychange', () => { if (document.hidden) clearAllKeys(); });
+
+/* === Mouse-only sliders: block their default arrow/Home/End/etc behavior
+      but LET the event bubble so our global handlers still see it. === */
+function blockSliderKeys(el) {
+  if (!el) return;
+  el.addEventListener('keydown', (e) => {
+    const blocked = ['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End','PageUp','PageDown'];
+    if (blocked.includes(e.code)) {
+      e.preventDefault();
+      // do not stopPropagation
+    }
+  });
+}
+
+/* =========================
+   Helpers
+========================= */
+function distToSegment(p, v, w) {
+  let l2 = p5.Vector.dist(v, w) ** 2;
+  if (l2 === 0) return p5.Vector.dist(p, v);
+  let t = ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2;
+  t = max(0, min(1, t));
+  let projection = createVector(v.x + t * (w.x - v.x), v.y + t * (w.y - v.y));
+  return p5.Vector.dist(p, projection);
+}
+function drawRegularPolygon(cx, cy, r, sides) {
+  push(); translate(cx, cy); beginShape();
+  const startAng = -PI/2;
+  for (let i = 0; i < sides; i++) {
+    const a = startAng + i * TWO_PI / sides;
+    vertex(r * cos(a), r * sin(a));
+  }
+  endShape(CLOSE); pop();
+}
+
+/* =========================
+   Sound Engine (vroom SFX for boosts)
+========================= */
+class SoundEngine {
+  constructor() {
+    // P1 voice: triangle + lowpass, slight left pan
+    this.osc1 = new p5.Oscillator('triangle');
+    this.f1   = new p5.Filter('lowpass');
+    this.osc1.disconnect();
+    this.osc1.connect(this.f1);
+    this.f1.res(2);
+    this.osc1.amp(0);
+    this.osc1.pan(-0.18);
+    this.osc1.start();
+
+    // P2/AI voice: sawtooth + lowpass, slight right pan (distinct)
+    this.osc2 = new p5.Oscillator('sawtooth');
+    this.f2   = new p5.Filter('lowpass');
+    this.osc2.disconnect();
+    this.osc2.connect(this.f2);
+    this.f2.res(2.5);
+    this.osc2.amp(0);
+    this.osc2.pan(0.18);
+    this.osc2.start();
+  }
+  stopAll() {
+    this.osc1.amp(0, 0.08);
+    this.osc2.amp(0, 0.08);
+  }
+  _updateVoice(osc, filt, player, game) {
+    if (!player || !player.isAlive || game.state !== 'playing' || !game.boostEnabled || !player.boosting) {
+      osc.amp(0, 0.08); // smooth fade out
+      return;
+    }
+    // Map speed to sound: higher speed => louder, brighter, slightly higher pitch
+    const sp  = player.speed;
+    const bs  = player.baseSpeed;
+    const amp = map(sp, bs, bs * 3, 0.02, 0.14, true);
+    const frq = constrain(40 + sp * 1.1, 80, 650);
+    const cut = constrain(300 + sp * 4.0, 500, 2200);
+    osc.freq(frq, 0.03);
+    filt.freq(cut, 0.03);
+    osc.amp(amp, 0.05);
+  }
+  update(game) {
+    const p1 = game.players[0] || null;
+    const p2 = (game.mode !== '1P') ? (game.players[1] || null) : null;
+    this._updateVoice(this.osc1, this.f1, p1, game);
+    this._updateVoice(this.osc2, this.f2, p2, game);
+  }
+}
+
+let SOUND = null;
+function ensureAudioInit() {
+  if (SOUND) return;
+  try { userStartAudio(); } catch(e){}
+  SOUND = new SoundEngine();
+}
+// Create audio on first user gesture (keydown/click/touch)
+window.addEventListener('pointerdown', ensureAudioInit, { passive:true });
+window.addEventListener('keydown', ensureAudioInit);
+
+/* =========================
+   AI Worker (stub, unchanged)
+========================= */
+function createAIWorker() {
+  const workerSrc =
+`self.onmessage = (e) => {
+  if ((e.data||{}).type !== 'think') return;
+  var action = 0, boost = false;
+  self.postMessage({ action, boost, stats: { ms: 0, sims: 0 } });
+};`;
+  const blob = new Blob([workerSrc], { type: 'application/javascript' });
+  const url = URL.createObjectURL(blob);
+  const w = new Worker(url);
+  URL.revokeObjectURL(url);
+  return w;
+}
+
+/* =========================
+   Player
+========================= */
+class Player {
+  constructor(x, y, col, label, settings, initialAngle=null) {
+    this.pos = createVector(x, y);
+    this.prevPos = this.pos.copy();
+    this.angle = (initialAngle === null) ? random(TWO_PI) : initialAngle;
+    this.dir = 0;
+    this.boosting = false;
+
+    this.baseSpeed = settings.baseSpeed;
+    this.acceleration = 400;
+    this.deceleration = 300;
+    this.speed = this.baseSpeed;
+
+    this.baseTurnSpeed = settings.turnSpeed;
+
+    this.color = col;
+    this.isAlive = true;
+    this.id = floor(random(100000));
+    this.label = label;
+
+    this.gapInterval = 1500;
+    this.gapDuration = 100;
+    this.lastGapStart = millis();
+    this.lastTrailTime = 0;
+
+    this.deathRegistered = false;
+
+    this.aiLastDir = 0;
+  }
+
+  update(dt, trails) {
+    if (!this.isAlive) return;
+
+    this.prevPos = this.pos.copy();
+
+    if (this.boosting) this.speed += this.acceleration * dt;
+    else this.speed -= this.deceleration * dt;
+    this.speed = max(this.speed, this.baseSpeed);
+
+    this.angle += this.dir * this.baseTurnSpeed * dt;
+    const velocity = p5.Vector.fromAngle(this.angle).mult(this.speed * dt);
+    this.pos.add(velocity);
+
+    const now = millis();
+    const inGap = (now - this.lastGapStart) < this.gapDuration;
+    if (now - this.lastGapStart > this.gapInterval + this.gapDuration) this.lastGapStart = now;
+
+    if (!inGap && now - this.lastTrailTime > 4) {
+      const trailColor = this.boosting ? color(0,255,0) : this.color;
+      trails.push({ from:this.prevPos.copy(), to:this.pos.copy(), col:trailColor, owner:this.id, time:now });
+      this.lastTrailTime = now;
+    }
+
+    if (this.pos.x < 0 || this.pos.x > width || this.pos.y < 0 || this.pos.y > height) this.isAlive = false;
+  }
+}
+
+/* =========================
+   Game
+========================= */
+class Game {
+  constructor() {
+    this.mode = '1P'; // default 1 Player
+    this.trails = [];
+    this.players = [];
+    this.score = { p1:0, p2:0 };
+    this.state = 'playing';
+    this.roundStart = millis();
+    this.restartAt = 0;
+    this.lastWinner = null;
+    this.overlayUntil = 0;
+
+    // feature toggles
+    this.boostEnabled  = true;
+    this.soundEnabled  = true; // NEW: boost sound master toggle
+    this.eraserEnabled = true;
+
+    // erasers
+    this.ERASER_VISUAL_R = 22;
+    this.ERASER_PICKUP_R = 24;
+    this.eraserIntervalSec = 1.0; // default via slider midpoint
+    this.eraserSpawns = [];
+    this.nextEraserAt = millis() + this.randEraserDelay();
+
+    // misc
+    this.deathEffects = [];
+    this.solo = { rounds:0, total:0, best:0, last:0 };
+    this.aiDifficulty = 5;
+
+    // AI plumbing (stub)
+    this.aiImpl = FLAGS.aiImpl;
+    this.aiBudgetMs = Math.max(0, FLAGS.aiBudgetMs|0);
+    this.aiTickMs   = Math.max(1, Math.floor(1000 / Math.max(1, FLAGS.aiTickHz|0)));
+    this.aiLastAction = { dir: 0, boost: false };
+    this.aiPending = false;
+    this.aiNextAt = millis();
+    this.aiWorker = (this.aiImpl !== 'classic') ? createAIWorker() : null;
+    if (this.aiWorker) {
+      this.aiWorker.onmessage = (ev) => {
+        const d = ev.data || {};
+        const a = (d.action === -1) ? -1 : (d.action === 1 ? 1 : 0);
+        this.aiLastAction = { dir: a, boost: !!d.boost };
+        this.aiPending = false;
+      };
+      this.aiWorker.onerror = () => { this.aiPending = false; };
+    }
+
+    // UI
+    this.refs = this.bindUI();
+    this.applyInitialUI();
+  }
+
+  bindUI() {
+    return {
+      sidebar: document.getElementById('sidebar'),
+
+      scoreP1: document.getElementById('scoreP1'),
+      scoreP2: document.getElementById('scoreP2'),
+      lastWinner: document.getElementById('lastWinner'),
+
+      versus: document.getElementById('versusSection'),
+      solo: document.getElementById('soloSection'),
+      p2Controls: document.getElementById('p2Controls'),
+      p1Controls: document.getElementById('p1Controls'),
+
+      mode1: document.getElementById('mode1'),
+      mode2: document.getElementById('mode2'),
+      modeAI: document.getElementById('modeAI'),
+
+      speed: document.getElementById('speedSlider'),
+      speedVal: document.getElementById('speedVal'),
+      turn: document.getElementById('turnSlider'),
+      turnVal: document.getElementById('turnVal'),
+
+      boostToggle: document.getElementById('boostToggle'),
+      boostSoundToggle: document.getElementById('boostSoundToggle'), // NEW
+      eraserToggle: document.getElementById('eraserToggle'),
+      apply: document.getElementById('applyBtn'),
+
+      eraserRateRow: document.getElementById('eraserRateRow'),
+      eraserRateSlider: document.getElementById('eraserRateSlider'),
+      eraserRateVal: document.getElementById('eraserRateVal'),
+
+      resetStats: document.getElementById('resetStatsBtn'),
+      soloCurrent: document.getElementById('soloCurrent'),
+      soloBest: document.getElementById('soloBest'),
+      soloLast: document.getElementById('soloLast'),
+      soloAvg: document.getElementById('soloAvg'),
+      soloRounds: document.getElementById('soloRounds'),
+
+      // AI Difficulty inside Gameplay Settings
+      aiRow: document.getElementById('aiRow'),
+      aiDiffSlider: document.getElementById('aiDiffSlider'),
+      aiDiffVal: document.getElementById('aiDiffVal'),
+    };
+  }
+
+  /* Map slider directly to seconds (midpoint=1.0s) */
+  sliderToEraserSeconds() {
+    const v = parseFloat(this.refs.eraserRateSlider.value || 1.0);
+    return v;
+  }
+
+  currentSettings() {
+    return {
+      baseSpeed: parseFloat(this.refs.speed.value),
+      turnSpeed: parseFloat(this.refs.turn.value),
+      eraserSec: this.sliderToEraserSeconds(),
+      aiDiff: parseInt(this.refs.aiDiffSlider.value || '5', 10),
+    };
+  }
+
+  applyInitialUI() {
+    this.refs.speedVal.textContent = this.refs.speed.value;
+    this.refs.turnVal.textContent  = this.refs.turn.value;
+    this.refs.eraserRateVal.textContent = `Every ${this.sliderToEraserSeconds().toFixed(1)}s`;
+    this.refs.aiDiffVal.textContent = this.refs.aiDiffSlider.value;
+
+    this.refs.speed.addEventListener('input', () => this.refs.speedVal.textContent = this.refs.speed.value);
+    this.refs.turn.addEventListener('input',  () => this.refs.turnVal.textContent  = this.refs.turn.value);
+    this.refs.eraserRateSlider.addEventListener('input', () => {
+      this.refs.eraserRateVal.textContent = `Every ${this.sliderToEraserSeconds().toFixed(1)}s`;
+    });
+    this.refs.aiDiffSlider.addEventListener('input', () => {
+      this.refs.aiDiffVal.textContent = this.refs.aiDiffSlider.value;
+    });
+
+    /* mouse-only key handling on sliders */
+    blockSliderKeys(this.refs.speed);
+    blockSliderKeys(this.refs.turn);
+    blockSliderKeys(this.refs.eraserRateSlider);
+    blockSliderKeys(this.refs.aiDiffSlider);
+
+    this.refs.apply.addEventListener('click', () => this.applySettingsLive());
+    if (this.refs.resetStats) {
+      this.refs.resetStats.addEventListener('click', () => {
+        this.solo = { rounds:0,total:0,best:0,last:0 };
+        this.updateSoloUI(this.currentSoloSeconds());
+      });
+    }
+
+    this.refs.mode1.addEventListener('click', () => this.setMode('1P'));
+    this.refs.mode2.addEventListener('click', () => this.setMode('2P'));
+    this.refs.modeAI.addEventListener('click', () => this.setMode('AI'));
+
+    this.refs.boostToggle.addEventListener('click',  () => this.toggleBoost());
+    this.refs.boostSoundToggle.addEventListener('click', () => this.toggleBoostSound()); // NEW
+    this.refs.eraserToggle.addEventListener('click', () => this.toggleEraser());
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        if (this.mode !== '1P') {
+          this.score.p1 = 0; this.score.p2 = 0; this.updateScoreUI(); this.startRound();
+        } else {
+          this.solo = { rounds:0,total:0,best:0,last:0 };
+          this.updateSoloUI(this.currentSoloSeconds());
+        }
+      }
+      if (e.key === 'f' || e.key === 'F') { const fs = fullscreen(); fullscreen(!fs); }
+    });
+
+    this.updateModeUI();
+    this.updateScoreUI();
+    this.updateWinnerUI();
+    this.updateControlsText();
+    this.updateEraserRateVisibility();
+  }
+
+  ensureCanvasSize() {
+    const stage = document.getElementById('stage');
+    const w = stage.clientWidth, h = stage.clientHeight;
+    if (width !== w || height !== h) resizeCanvas(w, h);
+  }
+
+  setMode(m) {
+    if (this.mode === m) return;
+    this.mode = m;
+    this.updateModeUI();
+    this.lastWinner = null;
+    this.overlayUntil = 0;
+    this.updateControlsText();
+    this.startRound();
+  }
+
+  updateModeUI() {
+    const is1P = this.mode === '1P';
+    const isAI = this.mode === 'AI';
+    this.refs.mode1.classList.toggle('active', is1P);
+    this.refs.mode2.classList.toggle('active', this.mode === '2P');
+    this.refs.modeAI.classList.toggle('active', isAI);
+
+    this.refs.versus.style.display = is1P ? 'none' : 'block';
+    this.refs.solo.style.display   = is1P ? 'block' : 'none';
+    this.refs.p2Controls.style.display = is1P ? 'none' : 'block';
+    this.refs.sidebar.classList.toggle('solo-compact', is1P);
+
+    /* Show AI difficulty row + slider only in AI mode */
+    if (this.refs.aiRow) this.refs.aiRow.style.display = isAI ? 'grid' : 'none';
+    if (this.refs.aiDiffSlider) this.refs.aiDiffSlider.style.display = isAI ? 'block' : 'none';
+  }
+
+  updateEraserRateVisibility() {
+    const show = this.eraserEnabled;
+    this.refs.eraserRateRow.style.display = show ? 'grid' : 'none';
+    this.refs.eraserRateSlider.style.display = show ? 'block' : 'none';
+  }
+
+  toggleBoost() {
+    this.boostEnabled = !this.boostEnabled;
+    const btn = this.refs.boostToggle;
+    btn.classList.toggle('on', this.boostEnabled);
+    btn.setAttribute('aria-pressed', this.boostEnabled ? 'true' : 'false');
+    btn.querySelector('.label').textContent = this.boostEnabled ? 'ON' : 'OFF';
+    if (!this.boostEnabled) for (let p of this.players) if (p) p.boosting = false;
+    this.updateControlsText();
+    if (!this.boostEnabled && SOUND) SOUND.stopAll();
+  }
+
+  // NEW: Toggle for boost sound master
+  toggleBoostSound() {
+    this.soundEnabled = !this.soundEnabled;
+    const btn = this.refs.boostSoundToggle;
+    btn.classList.toggle('on', this.soundEnabled);
+    btn.setAttribute('aria-pressed', this.soundEnabled ? 'true' : 'false');
+    btn.querySelector('.label').textContent = this.soundEnabled ? 'ON' : 'OFF';
+    if (!this.soundEnabled && SOUND) SOUND.stopAll();
+  }
+
+  toggleEraser() {
+    this.eraserEnabled = !this.eraserEnabled;
+    const btn = this.refs.eraserToggle;
+    btn.classList.toggle('on', this.eraserEnabled);
+    btn.setAttribute('aria-pressed', this.eraserEnabled ? 'true' : 'false');
+    btn.querySelector('.label').textContent = this.eraserEnabled ? 'ON' : 'OFF';
+    if (!this.eraserEnabled) { this.eraserSpawns = []; }
+    this.updateEraserRateVisibility();
+  }
+
+  updateControlsText() {
+    const is1P = this.mode === '1P';
+    if (!this.boostEnabled) {
+      this.refs.p1Controls.innerHTML = `<span class="pill p1">P1</span> Turn: ← → &nbsp;&nbsp; Boost: <b>Disabled</b>`;
+      this.refs.p2Controls.innerHTML =
+        `<span class="pill p2">${this.mode==='AI'?'AI':'P2'}</span> ${
+          this.mode==='AI' ? 'Autonomous' : 'Turn: <b>C</b>/<b>B</b> &nbsp; Boost: <b>Disabled</b>'
+        }`;
+    } else {
+      if (is1P) {
+        this.refs.p1Controls.innerHTML = `<span class="pill p1">P1</span> Turn: ← → &nbsp;&nbsp; Boost: <b>Space</b> or <b>L-Shift</b>`;
+      } else if (this.mode === 'AI') {
+        this.refs.p1Controls.innerHTML = `<span class="pill p1">P1</span> Turn: ← → &nbsp;&nbsp; Boost: <b>Space</b> or <b>L-Shift</b>`;
+        this.refs.p2Controls.innerHTML = `<span class="pill p2">AI</span> Autonomous`;
+      } else {
+        this.refs.p1Controls.innerHTML = `<span class="pill p1">P1</span> Turn: ← → &nbsp;&nbsp; Boost: <b>.</b>`;
+        this.refs.p2Controls.innerHTML = `<span class="pill p2">P2</span> Turn: <b>C</b>/<b>B</b> &nbsp; Boost: <b>Left Shift</b>`;
+      }
+    }
+  }
+
+  startRound() {
+    this.ensureCanvasSize();
+    this.trails = [];
+    this.players = [];
+    this.state = 'playing';
+    this.roundStart = millis();
+    this.overlayUntil = 0;
+
+    // erasers
+    this.eraserSpawns = [];
+    this.nextEraserAt = millis() + this.randEraserDelay();
+
+    // death fx
+    this.deathEffects = [];
+
+    const set = this.currentSettings();
+    this.eraserIntervalSec = set.eraserSec;
+    this.aiDifficulty = set.aiDiff;
+
+    const spawn = (col, label) => {
+      const margin = 140;
+      const x = random(margin, width - margin);
+      const y = random(margin, height - margin);
+      const center = createVector(width/2, height/2);
+      const baseAngle = Math.atan2(center.y - y, center.x - x) + random(-PI/6, PI/6);
+      return new Player(x, y, col, label, set, baseAngle);
+    };
+
+    this.players.push(spawn(color(0,255,255), 'p1'));
+    if (this.mode !== '1P') this.players.push(spawn(color(255,0,255), this.mode==='AI'?'ai':'p2'));
+
+    if (this.mode === '1P') this.updateSoloUI(0);
+    this.aiLastAction = { dir: 0, boost: false };
+    this.aiPending = false;
+    this.aiNextAt = millis();
+
+    if (SOUND) SOUND.stopAll();
+  }
+
+  /* ===== AI worker scheduling (future) ===== */
+  requestAIThink(p2) {
+    if (!this.aiWorker) return;
+    const now = millis();
+    if (this.aiPending || now < this.aiNextAt) return;
+
+    this.aiPending = true;
+    this.aiNextAt = now + this.aiTickMs;
+
+    const p1 = this.players[0];
+    const state = {
+      me: { x: p2.pos.x, y: p2.pos.y, angle: p2.angle, speed: p2.speed },
+      opp: p1 ? { x: p1.pos.x, y: p1.pos.y, angle: p1.angle, speed: p1.speed } : null,
+      dims: { w: width, h: height }
+    };
+
+    try {
+      this.aiWorker.postMessage({
+        type: 'think',
+        state,
+        options: { msBudget: this.aiBudgetMs, difficulty: this.aiDifficulty }
+      });
+    } catch (e) {
+      this.aiPending = false;
+    }
+  }
+
+  handleInput() {
+    const p1 = this.players[0];
+    const p2 = this.players[1];
+
+    // P1 steering: Arrow keys
+    if (p1) {
+      p1.dir = KEYS.ArrowLeft ? -1 : (KEYS.ArrowRight ? 1 : 0);
+
+      // Boost key depends on mode:
+      //  - 1P or AI => Space OR Left Shift
+      //  - 2P       => Period (.)
+      let p1BoostKey = false;
+      if (this.mode === '1P' || this.mode === 'AI') {
+        p1BoostKey = (KEYS.Space || KEYS.ShiftLeft);
+      } else {
+        p1BoostKey = KEYS.Period;
+      }
+      p1.boosting = this.boostEnabled && p1BoostKey;
+    }
+
+    if (this.mode === '2P') {
+      // P2 steering: C/B ; boost = Left Shift only
+      if (p2) {
+        p2.dir = KEYS.KeyC ? -1 : (KEYS.KeyB ? 1 : 0);
+        p2.boosting = this.boostEnabled && KEYS.ShiftLeft;
+      }
+    } else if (this.mode === 'AI') {
+      if (!p2) return;
+      if (this.aiImpl === 'classic') {
+        this.computeAIInput(p2);
+      } else {
+        this.requestAIThink(p2);
+        p2.dir = this.aiLastAction.dir;
+        p2.boosting = this.boostEnabled && this.aiLastAction.boost;
+      }
+    }
+  }
+
+  applySettingsLive() {
+    const set = this.currentSettings();
+    for (let p of this.players) {
+      p.baseSpeed = set.baseSpeed;
+      p.baseTurnSpeed = set.turnSpeed;
+      p.speed = max(p.speed, p.baseSpeed);
+    }
+    this.eraserIntervalSec = set.eraserSec;
+    this.aiDifficulty = set.aiDiff;
+  }
+
+  /* ----------- ERASER ----------- */
+  randEraserDelay() {
+    const baseMs = this.eraserIntervalSec * 1000;
+    return baseMs * random(0.8, 1.2);
+  }
+  spawnEraser() {
+    const margin = 50;
+    const ex = random(margin, width - margin);
+    const ey = random(margin, height - margin);
+    const shapes = ['circle','triangle','square','pentagon','hexagon'];
+    const shape = random(shapes);
+    this.eraserSpawns.push({ pos:createVector(ex,ey), born:millis(), shape });
+  }
+  updateEraserSystems() {
+    if (this.eraserEnabled && this.state === 'playing' && millis() >= this.nextEraserAt) {
+      if (this.eraserSpawns.length < 2) this.spawnEraser();
+      this.nextEraserAt = millis() + this.randEraserDelay();
+    }
+    for (let i = this.eraserSpawns.length - 1; i >= 0; i--) {
+      const s = this.eraserSpawns[i];
+      for (let p of this.players) {
+        if (!p || !p.isAlive) continue;
+        if (p5.Vector.dist(p.pos, s.pos) < this.ERASER_PICKUP_R) {
+          this.trails = [];
+          this.eraserSpawns.splice(i,1);
+          break;
+        }
+      }
+    }
+  }
+  drawEraserSystems() {
+    noStroke(); fill(255);
+    for (const s of this.eraserSpawns) {
+      const r = this.ERASER_VISUAL_R;
+      switch (s.shape) {
+        case 'circle':  circle(s.pos.x, s.pos.y, r*2); break;
+        case 'triangle': drawRegularPolygon(s.pos.x, s.pos.y, r, 3); break;
+        case 'square':   drawRegularPolygon(s.pos.x, s.pos.y, r, 4); break;
+        case 'pentagon': drawRegularPolygon(s.pos.x, s.pos.y, r, 5); break;
+        case 'hexagon':  drawRegularPolygon(s.pos.x, s.pos.y, r, 6); break;
+      }
+    }
+  }
+
+  /* ----------- Death effect ----------- */
+  spawnDeathEffect(pos, color) {
+    this.deathEffects.push({ pos: pos.copy(), color, start: millis(), dur: 450, rMax: 60 });
+  }
+  drawDeathEffects() {
+    for (let i = this.deathEffects.length - 1; i >= 0; i--) {
+      const ef = this.deathEffects[i];
+      const t = millis() - ef.start;
+      const k = constrain(t / ef.dur, 0, 1);
+      const r = (1 - (1 - k)*(1 - k)) * ef.rMax;
+      const alpha = 255 * (1 - k);
+      noFill();
+      stroke(red(ef.color), green(ef.color), blue(ef.color), alpha);
+      strokeWeight(3);
+      circle(ef.pos.x, ef.pos.y, r*2);
+      if (t >= ef.dur) this.deathEffects.splice(i,1);
+    }
+  }
+
+  /* -------- UI updates -------- */
+  updateScoreUI() {
+    this.refs.scoreP1.textContent = `${this.score.p1}`;
+    this.refs.scoreP2.textContent = `${this.score.p2}`;
+  }
+  updateWinnerUI() {
+    const w = this.lastWinner;
+    if (!w) { this.refs.lastWinner.textContent = '—'; this.refs.lastWinner.style.color = '#cfcfcf'; return; }
+    const label = (w === 'P2' && this.mode === 'AI') ? 'AI' : w;
+    if (w === 'P1') { this.refs.lastWinner.textContent = label; this.refs.lastWinner.style.color = 'rgb(0,255,255)'; }
+    else if (w === 'P2') { this.refs.lastWinner.textContent = label; this.refs.lastWinner.style.color = 'rgb(255,0,255)'; }
+    else { this.refs.lastWinner.textContent = 'Draw'; this.refs.lastWinner.style.color = '#eaeaea'; }
+  }
+  updateSoloUI(currentSec) {
+    const avg = this.solo.rounds ? Math.round(this.solo.total / this.solo.rounds) : 0;
+    this.refs.soloCurrent.textContent = `${currentSec}s`;
+    this.refs.soloBest.textContent    = `${this.solo.best}s`;
+    this.refs.soloLast.textContent    = `${this.solo.last}s`;
+    this.refs.soloAvg.textContent     = `${avg}s`;
+    this.refs.soloRounds.textContent  = `${this.solo.rounds}`;
+  }
+  currentSoloSeconds() { return Math.floor((millis() - this.roundStart) / 1000); }
+
+  /* -------- main loop -------- */
+  loop(dt) {
+    background(0);
+    this.handleInput();
+
+    if (this.state === 'playing') {
+      for (let p of this.players) p.update(dt, this.trails);
+
+      // eraser systems BEFORE collision checks
+      this.updateEraserSystems();
+
+      const off1 = !this.players[0] || !this.players[0].isAlive;
+      const off2 = (this.mode !== '1P') ? (!this.players[1] || !this.players[1].isAlive) : false;
+      let died1 = off1, died2 = off2;
+
+      if (this.mode !== '1P') {
+        const d = this.checkCollisions2P(); died1 = died1 || d.p1; died2 = died2 || d.p2;
+      } else {
+        died1 = died1 || this.checkCollisionsSolo();
+      }
+
+      // death effects
+      for (let p of this.players) {
+        if (p && !p.isAlive && !p.deathRegistered) {
+          this.spawnDeathEffect(p.pos, p.color);
+          p.deathRegistered = true;
+        }
+      }
+
+      if (this.mode !== '1P') {
+        if (died1 || died2) {
+          if (died1 && !died2) { this.score.p2++; this.lastWinner = 'P2'; }
+          else if (died2 && !died1) { this.score.p1++; this.lastWinner = 'P1'; }
+          else { this.lastWinner = 'Draw'; }
+          this.updateScoreUI(); this.updateWinnerUI();
+          this.overlayUntil = millis() + 1200;
+          this.enterIntermission();
+        }
+      } else {
+        const current = this.currentSoloSeconds();
+        if (died1) {
+          this.solo.rounds++; this.solo.last = current; this.solo.total += current;
+          if (current > this.solo.best) this.solo.best = current;
+          this.updateSoloUI(0);
+          this.enterIntermission();
+        } else {
+          this.updateSoloUI(current);
+        }
+      }
+    } else if (millis() >= this.restartAt) {
+      this.startRound();
+    }
+
+    // draw trails & heads
+    this.drawTrails();
+    if (this.state === 'playing') {
+      for (let p of this.players) {
+        if (!p || !p.isAlive) continue;
+        fill(p.color); noStroke(); circle(p.pos.x, p.pos.y, 4);
+      }
+    }
+
+    // erasers & death fx
+    this.drawEraserSystems();
+    this.drawDeathEffects();
+
+    // Update SFX (respect soundEnabled)
+    if (SOUND) {
+      if (this.soundEnabled) SOUND.update(this);
+      else SOUND.stopAll();
+    }
+
+    // round overlay
+    if (this.mode !== '1P' && millis() < this.overlayUntil && this.lastWinner) {
+      push(); textAlign(CENTER, CENTER); textSize(36); noStroke();
+      if (this.lastWinner === 'P1') fill(0,255,255);
+      else if (this.lastWinner === 'P2') fill(255,0,255);
+      else fill(255);
+      const label = (this.lastWinner === 'P2' && this.mode === 'AI') ? 'AI' : this.lastWinner;
+      text(this.lastWinner === 'Draw' ? 'Draw!' : `${label} scores!`, width/2, height/2);
+      pop();
+    }
+  }
+
+  enterIntermission() { this.state = 'intermission'; this.restartAt = millis() + 500; if (SOUND) SOUND.stopAll(); }
+
+  drawTrails() { strokeWeight(4); for (let t of this.trails) { stroke(t.col); line(t.from.x, t.from.y, t.to.x, t.to.y); } }
+
+  checkCollisionsSolo() {
+    const now = millis(); const pl = this.players[0]; if (!pl || !pl.isAlive) return true;
+    for (let t of this.trails) {
+      if (t.owner === pl.id && now - t.time < 100) continue;
+      if (distToSegment(pl.pos, t.from, t.to) < 4) { pl.isAlive = false; return true; }
+    }
+    return false;
+  }
+
+  checkCollisions2P() {
+    const now = millis(); let died = { p1:false, p2:false };
+    for (let i=0; i<this.players.length; i++) {
+      const pl = this.players[i];
+      if (!pl || !pl.isAlive) { if (i===0) died.p1=true; else died.p2=true; continue; }
+      for (let t of this.trails) {
+        if (t.owner === pl.id && now - t.time < 100) continue;
+        if (distToSegment(pl.pos, t.from, t.to) < 4) { pl.isAlive=false; if (i===0) died.p1=true; else died.p2=true; break; }
+      }
+    }
+    return died;
+  }
+
+  /* ---------- AI (stronger but light) ---------- */
+  computeAIInput(p) {
+    const d = constrain(this.aiDifficulty || 5, 1, 10);
+
+    // Lookahead parameters scale with difficulty & speed
+    const look = radians(8 + d * 3);
+    const steps = 8 + d * 2;
+    const stepLen = 8 + d + (p.speed / 140);
+
+    // Safety thresholds
+    const baseSafe = 20 + d * 4;
+    const panicThresh = 10 + d * 2;
+
+    const ahead = p5.Vector.fromAngle(p.angle).mult(40);
+    const probe = p.pos.copy().add(ahead);
+    const danger = Math.min(this.wallClearanceAt(probe), this.minTrailDistAt(probe, p.id));
+
+    const segments = this.trails.slice(-280);
+
+    const sLeft     = this.scoreForAngle(p, p.angle - look, steps, stepLen, segments);
+    const sStraight = this.scoreForAngle(p, p.angle,       steps, stepLen, segments);
+    const sRight    = this.scoreForAngle(p, p.angle + look, steps, stepLen, segments);
+
+    let biasLeft = 0, biasRight = 0;
+    const opp = this.players[0];
+    if (opp) {
+      const toOpp = Math.atan2(opp.pos.y - p.pos.y, opp.pos.x - p.pos.x) - p.angle;
+      const t = Math.atan2(Math.sin(toOpp), Math.cos(toOpp));
+      const oppDist = p5.Vector.dist(p.pos, opp.pos);
+      if (oppDist < 160 && Math.abs(t) < Math.PI / 3) {
+        const w = (160 - oppDist) / 160;
+        if (t > 0) biasLeft += 8 * w; else biasRight += 8 * w;
+      }
+    }
+
+    const bestScore = Math.max(sLeft + biasLeft, sStraight, sRight + biasRight);
+    const closeMargin = 6 + d * 1.5;
+
+    let targetDir = 0;
+    if (bestScore === sLeft + biasLeft) targetDir = -1;
+    else if (bestScore === sRight + biasRight) targetDir = 1;
+    else targetDir = 0;
+
+    if (sStraight >= bestScore - closeMargin) targetDir = 0;
+    if (danger < panicThresh) targetDir = (sLeft > sRight) ? -1 : 1;
+
+    if (p.aiLastDir !== 0 && targetDir !== 0) {
+      const currentScore = (p.aiLastDir < 0) ? (sLeft + biasLeft) : (sRight + biasRight);
+      const candidateScore = (targetDir < 0) ? (sLeft + biasLeft) : (sRight + biasRight);
+      if (candidateScore < currentScore + 4) targetDir = p.aiLastDir;
+    }
+
+    p.dir = targetDir;
+    p.aiLastDir = targetDir;
+
+    let boost = false;
+    const boostProb = 0.06 + d * 0.02;
+    const corridor = Math.max(sStraight, Math.min(sLeft, sRight));
+    const wideEnough = corridor > 20 + d * 4 /* baseSafe */ * 1.4;
+    const notCornering = (p.dir === 0);
+    if (this.boostEnabled && wideEnough && notCornering && Math.random() < boostProb) {
+      boost = true;
+    }
+    p.boosting = boost;
+  }
+
+  scoreForAngle(p, ang, steps, stepLen, segments) {
+    let posx = p.pos.x, posy = p.pos.y;
+    let minClear = Infinity;
+    const now = millis();
+    for (let i = 0; i < steps; i++) {
+      posx += Math.cos(ang) * stepLen;
+      posy += Math.sin(ang) * stepLen;
+      const wall = Math.min(posx, width - posx, posy, height - posy);
+
+      const pv = createVector(posx, posy);
+      let trail = Infinity;
+      for (let t of segments) {
+        if (t.owner === p.id && now - t.time < 100) continue;
+        trail = Math.min(trail, distToSegment(pv, t.from, t.to));
+        if (trail < 4) break;
+      }
+      const clear = Math.min(wall, trail);
+      if (clear < minClear) minClear = clear;
+      if (clear < 4) break;
+    }
+    return minClear;
+  }
+
+  wallClearanceAt(v) { return Math.min(v.x, width - v.x, v.y, height - v.y); }
+  minTrailDistAt(v, selfId) {
+    const pv = createVector(v.x, v.y);
+    const now = millis();
+    let best = Infinity;
+    for (let t of this.trails) {
+      if (t.owner === selfId && now - t.time < 100) continue;
+      best = Math.min(best, distToSegment(pv, t.from, t.to));
+      if (best < 4) break;
+    }
+    return best;
+  }
+}
+
+/* =========================
+   p5 glue
+========================= */
+let GAME;
+function setup() {
+  const stage = document.getElementById('stage');
+  const c = createCanvas(stage.clientWidth, stage.clientHeight);
+  c.parent('stage');
+  noSmooth();
+  frameRate(1000);
+  GAME = new Game();
+  GAME.startRound();
+}
+function windowResized() { if (GAME) GAME.ensureCanvasSize(); }
+function draw() {
+  if (!GAME) return;
+  const dt = Math.min(deltaTime / 1000, 0.03);
+  GAME.loop(dt);
+}
+</script>
+</body>
+</html>
