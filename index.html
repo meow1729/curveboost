@@ -190,11 +190,11 @@
           </button>
         </div>
 
-        <!-- NEW: Boost Sound toggle -->
+        <!-- Boost Sound toggle (OFF by default) -->
         <div class="toggle-row">
           <div class="toggle-label">Boost Sound</div>
-          <button id="boostSoundToggle" class="switch on" aria-pressed="true" title="Toggle boost sound">
-            <span class="knob"></span><span class="label">ON</span>
+          <button id="boostSoundToggle" class="switch" aria-pressed="false" title="Toggle boost sound">
+            <span class="knob"></span><span class="label">OFF</span>
           </button>
         </div>
 
@@ -205,12 +205,12 @@
           </button>
         </div>
 
-        <!-- Eraser spawn rate (seconds; midpoint=1.0s default) -->
+        <!-- Eraser spawn rate (right = faster). Range: 4.0s (left) .. 0.5s (right). Default display: 2.0s -->
         <div id="eraserRateRow" class="slider" style="margin-top:12px;">
           <label for="eraserRateSlider">Eraser Spawn Rate</label>
-          <span id="eraserRateVal" class="pill">Every 1.0s</span>
+          <span id="eraserRateVal" class="pill">Every 2.0s</span>
         </div>
-        <input id="eraserRateSlider" type="range" min="0.5" max="1.5" step="0.1" value="1.0" />
+        <input id="eraserRateSlider" type="range" min="0.5" max="4.0" step="0.1" value="2.5" />
 
         <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
           <button id="applyBtn">Instant Apply</button>
@@ -453,13 +453,13 @@ class Game {
 
     // feature toggles
     this.boostEnabled  = true;
-    this.soundEnabled  = true; // NEW: boost sound master toggle
+    this.soundEnabled  = false; // OFF by default
     this.eraserEnabled = true;
 
     // erasers
     this.ERASER_VISUAL_R = 22;
     this.ERASER_PICKUP_R = 24;
-    this.eraserIntervalSec = 1.0; // default via slider midpoint
+    this.eraserIntervalSec = 1.0; // will be overwritten by slider in startRound()
     this.eraserSpawns = [];
     this.nextEraserAt = millis() + this.randEraserDelay();
 
@@ -514,7 +514,7 @@ class Game {
       turnVal: document.getElementById('turnVal'),
 
       boostToggle: document.getElementById('boostToggle'),
-      boostSoundToggle: document.getElementById('boostSoundToggle'), // NEW
+      boostSoundToggle: document.getElementById('boostSoundToggle'),
       eraserToggle: document.getElementById('eraserToggle'),
       apply: document.getElementById('applyBtn'),
 
@@ -536,10 +536,15 @@ class Game {
     };
   }
 
-  /* Map slider directly to seconds (midpoint=1.0s) */
+  /* Map slider value (0.5..4.0) to seconds (4.0..0.5) so RIGHT = faster */
   sliderToEraserSeconds() {
-    const v = parseFloat(this.refs.eraserRateSlider.value || 1.0);
-    return v;
+    const el = this.refs.eraserRateSlider;
+    const v = parseFloat(el.value || '2.5');
+    const vMin = parseFloat(el.min || '0.5');
+    const vMax = parseFloat(el.max || '4.0');
+    const secMin = 0.5, secMax = 4.0;
+    const t = (v - vMin) / (vMax - vMin); // 0 at left, 1 at right
+    return secMax - t * (secMax - secMin); // 4→0.5 as slider moves right
   }
 
   currentSettings() {
@@ -585,7 +590,7 @@ class Game {
     this.refs.modeAI.addEventListener('click', () => this.setMode('AI'));
 
     this.refs.boostToggle.addEventListener('click',  () => this.toggleBoost());
-    this.refs.boostSoundToggle.addEventListener('click', () => this.toggleBoostSound()); // NEW
+    this.refs.boostSoundToggle.addEventListener('click', () => this.toggleBoostSound());
     this.refs.eraserToggle.addEventListener('click', () => this.toggleEraser());
 
     window.addEventListener('keydown', (e) => {
@@ -658,7 +663,7 @@ class Game {
     if (!this.boostEnabled && SOUND) SOUND.stopAll();
   }
 
-  // NEW: Toggle for boost sound master
+  // Toggle for boost sound master
   toggleBoostSound() {
     this.soundEnabled = !this.soundEnabled;
     const btn = this.refs.boostSoundToggle;
@@ -829,7 +834,7 @@ class Game {
   }
   updateEraserSystems() {
     if (this.eraserEnabled && this.state === 'playing' && millis() >= this.nextEraserAt) {
-      if (this.eraserSpawns.length < 2) this.spawnEraser();
+      if (this.eraserSpawns.length < 5) this.spawnEraser(); // increased cap to 5
       this.nextEraserAt = millis() + this.randEraserDelay();
     }
     for (let i = this.eraserSpawns.length - 1; i >= 0; i--) {
