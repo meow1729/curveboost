@@ -1,1 +1,1 @@
-[CURVEBOOST.IO](URL "CURVEBOOST.IO")
+[CURVEBOOST.IO](https://curveboost.io/)
